@@ -1,4 +1,5 @@
 using Microsoft.Net.Http.Headers;
+using System.Reflection.Emit;
 
 namespace Unity_WebGL_Server
 {
@@ -8,33 +9,59 @@ namespace Unity_WebGL_Server
         {
             var builder = WebApplication.CreateSlimBuilder(args);
             var app = builder.Build();
-            
+
+            string defaultRequestDir = "APP/";
             string appDirPath = Path.GetFullPath("wwwroot/APP/");
+            string HotUpdateResDirPath = Path.GetFullPath("wwwroot/HotUpdateRes/");
+            string wwwroot = Path.GetFullPath("wwwroot/");
+
             if (!Directory.Exists(appDirPath))
             {
-                throw new DirectoryNotFoundException($"Web root not found: {appDirPath}");
+                throw new DirectoryNotFoundException($"requestRootDir not found: {appDirPath}");
+            }
+
+            if (!Directory.Exists(HotUpdateResDirPath))
+            {
+                throw new DirectoryNotFoundException($"HotUpdateResPath found: {HotUpdateResDirPath}");
             }
 
             // 自定义 Gzip 静态文件中间件（专为 Unity WebGL 设计）
             app.Use(async (context, next) =>
             {
-                var requestPath = context.Request.Path.Value;
-                Console.WriteLine("requestPath: 000 " + requestPath);
+                string requestPath = context.Request.Path.Value;
+                string requestRootDir = wwwroot;
+                
                 if (string.IsNullOrEmpty(requestPath) || requestPath == "/")
                 {
                     requestPath = "/index.html";
-                    context.Request.Path = requestPath;
+                    requestRootDir = appDirPath;
                 }
-                Console.WriteLine("requestPath: 111 " + requestPath);
 
                 // 安全路径处理
-                var fullPath = Path.GetFullPath(Path.Combine(appDirPath, requestPath.TrimStart('/')));
-                if (!fullPath.StartsWith(appDirPath, StringComparison.OrdinalIgnoreCase))
+                string fullPath = string.Empty;
+                fullPath = Path.GetFullPath(Path.Combine(requestRootDir, requestPath.TrimStart('/')));
+                if (fullPath.StartsWith(appDirPath))
                 {
-                    context.Response.StatusCode = 403;
-                    return;
+
                 }
-                Console.WriteLine("requestPath: 222 " + fullPath);
+                else if(fullPath.StartsWith(HotUpdateResDirPath))
+                {
+
+                }
+                else
+                {
+                    requestRootDir = appDirPath;
+                    fullPath = Path.GetFullPath(Path.Combine(requestRootDir, requestPath.TrimStart('/')));
+                }
+
+                if (File.Exists(fullPath))
+                {
+                    Console.WriteLine($"requestPath:  {fullPath}");
+                }
+                else
+                {
+                    Console.WriteLine($"requestPath:  {fullPath} 不存在");
+                }
 
                 // 情况 1：请求的是 .js 或 .wasm（团结引擎通常这样请求）
                 bool isCompressible = requestPath.EndsWith(".js") || requestPath.EndsWith(".wasm") || requestPath.EndsWith(".data");
@@ -45,17 +72,17 @@ namespace Unity_WebGL_Server
                 {
                     // 去掉 .gz 获取原始路径，用于设置 Content-Type
                     var originalPath = requestPath.Substring(0, requestPath.Length - 3);
-                    var originalFullPath = Path.GetFullPath(Path.Combine(appDirPath, originalPath.TrimStart('/')));
-                    if (!originalFullPath.StartsWith(appDirPath, StringComparison.OrdinalIgnoreCase))
+                    var originalFullPath = Path.GetFullPath(Path.Combine(requestRootDir, originalPath.TrimStart('/')));
+                    if (!originalFullPath.StartsWith(requestRootDir, StringComparison.OrdinalIgnoreCase))
                     {
                         context.Response.StatusCode = 403;
-                        return;
+                        goto Next;
                     }
 
                     if (!File.Exists(fullPath))
                     {
                         context.Response.StatusCode = 404;
-                        return;
+                        goto Next;
                     }
 
                     var contentType = GetContentType(originalPath);
@@ -63,8 +90,6 @@ namespace Unity_WebGL_Server
                     context.Response.Headers[HeaderNames.ContentEncoding] = "gzip";
                     context.Response.Headers[HeaderNames.Vary] = "Accept-Encoding";
                     await context.Response.SendFileAsync(fullPath);
-
-                    Console.WriteLine("AAA");
                 }
                 // 情况 1：请求 .js，但存在 .js.gz → 返回 .gz 内容
                 else if (isCompressible && File.Exists(gzipPath))
@@ -74,22 +99,18 @@ namespace Unity_WebGL_Server
                     context.Response.Headers[HeaderNames.ContentEncoding] = "gzip";
                     context.Response.Headers[HeaderNames.Vary] = "Accept-Encoding";
                     await context.Response.SendFileAsync(gzipPath);
-                    Console.WriteLine("BBB");
                 }
                 // 否则返回原始文件（如 index.html, .data 无 .gz 等）
                 else if (File.Exists(fullPath))
                 {
                     context.Response.ContentType = GetContentType(requestPath);
                     await context.Response.SendFileAsync(fullPath);
-                    Console.WriteLine("CCC");
                 }
-                else
-                {
-                    context.Response.StatusCode = 404;
-                    await next();
-                }
+            Next:
+                Console.WriteLine("下一个请求");
+                await next();
             });
-
+                
             app.Run();
         }
 
