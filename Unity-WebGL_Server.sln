@@ -1,11 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.36518.9 d17.14
+VisualStudioVersion = 17.14.36518.9
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unity-WebGL_Server", "Unity-WebGL_Server.csproj", "{2D7DDB6C-CFEC-4181-8AB4-0B9CC11E9ECC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unity-WebGL_Server", "Unity-WebGL_Server\Unity-WebGL_Server.csproj", "{57A923E2-196B-3355-01D4-BC1621967778}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unity-WebGL_Server2", "..\Unity-WebGL_Server2\Unity-WebGL_Server2.csproj", "{3A075627-4CED-404A-8903-2817CB591FD2}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Unity-WebGL_Server2", "Unity-WebGL_Server2\Unity-WebGL_Server2.csproj", "{25AF3EF0-7FF3-EB5A-2950-E3DD684F3E68}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,14 +13,14 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{2D7DDB6C-CFEC-4181-8AB4-0B9CC11E9ECC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2D7DDB6C-CFEC-4181-8AB4-0B9CC11E9ECC}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2D7DDB6C-CFEC-4181-8AB4-0B9CC11E9ECC}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2D7DDB6C-CFEC-4181-8AB4-0B9CC11E9ECC}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3A075627-4CED-404A-8903-2817CB591FD2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3A075627-4CED-404A-8903-2817CB591FD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3A075627-4CED-404A-8903-2817CB591FD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3A075627-4CED-404A-8903-2817CB591FD2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{57A923E2-196B-3355-01D4-BC1621967778}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{57A923E2-196B-3355-01D4-BC1621967778}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{57A923E2-196B-3355-01D4-BC1621967778}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{57A923E2-196B-3355-01D4-BC1621967778}.Release|Any CPU.Build.0 = Release|Any CPU
+		{25AF3EF0-7FF3-EB5A-2950-E3DD684F3E68}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{25AF3EF0-7FF3-EB5A-2950-E3DD684F3E68}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{25AF3EF0-7FF3-EB5A-2950-E3DD684F3E68}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{25AF3EF0-7FF3-EB5A-2950-E3DD684F3E68}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

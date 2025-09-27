@@ -9,83 +9,99 @@ namespace Unity_WebGL_Server
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateSlimBuilder(args);
-
-            builder.Services.ConfigureHttpJsonOptions(options =>
-            {
-                options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
-            });
-
             var app = builder.Build();
-
-            var sampleTodos = new Todo[] {
-                new(1, "Walk the dog"),
-                new(2, "Do the dishes", DateOnly.FromDateTime(DateTime.Now)),
-                new(3, "Do the laundry", DateOnly.FromDateTime(DateTime.Now.AddDays(1))),
-                new(4, "Clean the bathroom"),
-                new(5, "Clean the car", DateOnly.FromDateTime(DateTime.Now.AddDays(2)))
-            };
-
-            var todosApi = app.MapGroup("/todos");
-            //todosApi.MapGet("/", () => sampleTodos);
-            todosApi.MapGet("/{id}", (int id) =>
-                sampleTodos.FirstOrDefault(a => a.Id == id) is { } todo
-                    ? Results.Ok(todo)
-                    : Results.NotFound());
-
-
+            
             string webRoot = Path.GetFullPath("wwwroot");
             if (!Directory.Exists(webRoot))
             {
                 throw new DirectoryNotFoundException($"Web root not found: {webRoot}");
             }
-            app.UseStaticFiles();
 
-            // 自定义 Gzip 静态文件中间件
+            // 自定义 Gzip 静态文件中间件（专为 Unity WebGL 设计）
             app.Use(async (context, next) =>
             {
-                var path = context.Request.Path.Value;
-                if (string.IsNullOrEmpty(path) || path == "/")
-                    path = "/index.html";
+                var requestPath = context.Request.Path.Value;
+                if (string.IsNullOrEmpty(requestPath) || requestPath == "/")
+                    requestPath = "/index.html";
 
-                var filePath = Path.Combine(webRoot, path.TrimStart('/'));
-
-                // 安全：防止路径遍历
-                if (!Path.GetFullPath(filePath).StartsWith(webRoot))
+                // 安全路径处理
+                var fullPath = Path.GetFullPath(Path.Combine(webRoot, requestPath.TrimStart('/')));
+                if (!fullPath.StartsWith(webRoot, StringComparison.OrdinalIgnoreCase))
                 {
                     context.Response.StatusCode = 403;
                     return;
                 }
 
-                // 检查 .gz 文件是否存在 且 客户端支持 gzip
-                bool clientAcceptsGzip = context.Request.Headers[HeaderNames.AcceptEncoding].ToString().Contains("gzip");
-                string gzipPath = filePath + ".gz";
+                // 情况 1：请求的是 .js 或 .wasm（团结引擎通常这样请求）
+                bool isCompressible = requestPath.EndsWith(".js") || requestPath.EndsWith(".wasm") || requestPath.EndsWith(".data");
+                string gzipPath = fullPath + ".gz";
 
-                if (clientAcceptsGzip && File.Exists(gzipPath))
+                // 情况 2：请求的已经是 .js.gz（某些 loader 行为）
+                if (requestPath.EndsWith(".js.gz") || requestPath.EndsWith(".wasm.gz") || requestPath.EndsWith(".data.gz"))
                 {
-                    // 根据原始文件扩展名设置 Content-Type
-                    string contentType = Path.GetExtension(filePath) switch
+                    // 去掉 .gz 获取原始路径，用于设置 Content-Type
+                    var originalPath = requestPath.Substring(0, requestPath.Length - 3);
+                    var originalFullPath = Path.GetFullPath(Path.Combine(webRoot, originalPath.TrimStart('/')));
+                    if (!originalFullPath.StartsWith(webRoot, StringComparison.OrdinalIgnoreCase))
                     {
-                        ".js" => "application/javascript",
-                        ".wasm" => "application/wasm",
-                        ".data" or ".bundle" => "application/octet-stream",
-                        ".html" => "text/html",
-                        ".css" => "text/css",
-                        _ => "application/octet-stream"
-                    };
+                        context.Response.StatusCode = 403;
+                        return;
+                    }
 
+                    if (!File.Exists(fullPath))
+                    {
+                        context.Response.StatusCode = 404;
+                        return;
+                    }
+
+                    var contentType = GetContentType(originalPath);
                     context.Response.ContentType = contentType;
                     context.Response.Headers[HeaderNames.ContentEncoding] = "gzip";
                     context.Response.Headers[HeaderNames.Vary] = "Accept-Encoding";
+                    await context.Response.SendFileAsync(fullPath);
+                    return;
+                }
 
+                // 情况 1：请求 .js，但存在 .js.gz → 返回 .gz 内容
+                if (isCompressible && File.Exists(gzipPath))
+                {
+                    var contentType = GetContentType(requestPath);
+                    context.Response.ContentType = contentType;
+                    context.Response.Headers[HeaderNames.ContentEncoding] = "gzip";
+                    context.Response.Headers[HeaderNames.Vary] = "Accept-Encoding";
                     await context.Response.SendFileAsync(gzipPath);
                     return;
                 }
 
-                // 否则交给静态文件中间件
+                // 否则返回原始文件（如 index.html, .data 无 .gz 等）
+                if (File.Exists(fullPath))
+                {
+                    context.Response.ContentType = GetContentType(requestPath);
+                    await context.Response.SendFileAsync(fullPath);
+                    return;
+                }
+
+                context.Response.StatusCode = 404;
                 await next();
             });
 
             app.Run();
+        }
+
+        static string GetContentType(string path)
+        {
+            return Path.GetExtension(path).ToLowerInvariant() switch
+            {
+                ".html" => "text/html",
+                ".js" => "application/javascript",
+                ".wasm" => "application/wasm",
+                ".data" or ".bundle" => "application/octet-stream",
+                ".css" => "text/css",
+                ".png" => "image/png",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".json" => "application/json",
+                _ => "application/octet-stream"
+            };
         }
     }
 
