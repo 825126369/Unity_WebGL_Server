@@ -1,5 +1,4 @@
 using Microsoft.Net.Http.Headers;
-using System.Text.Json.Serialization;
 
 namespace Unity_WebGL_Server
 {
@@ -10,29 +9,32 @@ namespace Unity_WebGL_Server
             var builder = WebApplication.CreateSlimBuilder(args);
             var app = builder.Build();
             
-            string webRoot = Path.GetFullPath("wwwroot");
-            if (!Directory.Exists(webRoot))
+            string appDirPath = Path.GetFullPath("wwwroot/APP/");
+            if (!Directory.Exists(appDirPath))
             {
-                throw new DirectoryNotFoundException($"Web root not found: {webRoot}");
+                throw new DirectoryNotFoundException($"Web root not found: {appDirPath}");
             }
 
             // 自定义 Gzip 静态文件中间件（专为 Unity WebGL 设计）
             app.Use(async (context, next) =>
             {
                 var requestPath = context.Request.Path.Value;
-                Console.WriteLine("requestPath: " + requestPath);
+                Console.WriteLine("requestPath: 000 " + requestPath);
                 if (string.IsNullOrEmpty(requestPath) || requestPath == "/")
                 {
-                    requestPath = "APP/index.html";
+                    requestPath = "/index.html";
+                    context.Request.Path = requestPath;
                 }
+                Console.WriteLine("requestPath: 111 " + requestPath);
 
                 // 安全路径处理
-                var fullPath = Path.GetFullPath(Path.Combine(webRoot, requestPath.TrimStart('/')));
-                if (!fullPath.StartsWith(webRoot, StringComparison.OrdinalIgnoreCase))
+                var fullPath = Path.GetFullPath(Path.Combine(appDirPath, requestPath.TrimStart('/')));
+                if (!fullPath.StartsWith(appDirPath, StringComparison.OrdinalIgnoreCase))
                 {
                     context.Response.StatusCode = 403;
                     return;
                 }
+                Console.WriteLine("requestPath: 222 " + fullPath);
 
                 // 情况 1：请求的是 .js 或 .wasm（团结引擎通常这样请求）
                 bool isCompressible = requestPath.EndsWith(".js") || requestPath.EndsWith(".wasm") || requestPath.EndsWith(".data");
@@ -43,8 +45,8 @@ namespace Unity_WebGL_Server
                 {
                     // 去掉 .gz 获取原始路径，用于设置 Content-Type
                     var originalPath = requestPath.Substring(0, requestPath.Length - 3);
-                    var originalFullPath = Path.GetFullPath(Path.Combine(webRoot, originalPath.TrimStart('/')));
-                    if (!originalFullPath.StartsWith(webRoot, StringComparison.OrdinalIgnoreCase))
+                    var originalFullPath = Path.GetFullPath(Path.Combine(appDirPath, originalPath.TrimStart('/')));
+                    if (!originalFullPath.StartsWith(appDirPath, StringComparison.OrdinalIgnoreCase))
                     {
                         context.Response.StatusCode = 403;
                         return;
@@ -61,30 +63,31 @@ namespace Unity_WebGL_Server
                     context.Response.Headers[HeaderNames.ContentEncoding] = "gzip";
                     context.Response.Headers[HeaderNames.Vary] = "Accept-Encoding";
                     await context.Response.SendFileAsync(fullPath);
-                    return;
-                }
 
+                    Console.WriteLine("AAA");
+                }
                 // 情况 1：请求 .js，但存在 .js.gz → 返回 .gz 内容
-                if (isCompressible && File.Exists(gzipPath))
+                else if (isCompressible && File.Exists(gzipPath))
                 {
                     var contentType = GetContentType(requestPath);
                     context.Response.ContentType = contentType;
                     context.Response.Headers[HeaderNames.ContentEncoding] = "gzip";
                     context.Response.Headers[HeaderNames.Vary] = "Accept-Encoding";
                     await context.Response.SendFileAsync(gzipPath);
-                    return;
+                    Console.WriteLine("BBB");
                 }
-
                 // 否则返回原始文件（如 index.html, .data 无 .gz 等）
-                if (File.Exists(fullPath))
+                else if (File.Exists(fullPath))
                 {
                     context.Response.ContentType = GetContentType(requestPath);
                     await context.Response.SendFileAsync(fullPath);
-                    return;
+                    Console.WriteLine("CCC");
                 }
-
-                context.Response.StatusCode = 404;
-                await next();
+                else
+                {
+                    context.Response.StatusCode = 404;
+                    await next();
+                }
             });
 
             app.Run();
@@ -105,13 +108,5 @@ namespace Unity_WebGL_Server
                 _ => "application/octet-stream"
             };
         }
-    }
-
-    public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
-
-    [JsonSerializable(typeof(Todo[]))]
-    internal partial class AppJsonSerializerContext : JsonSerializerContext
-    {
-
     }
 }
