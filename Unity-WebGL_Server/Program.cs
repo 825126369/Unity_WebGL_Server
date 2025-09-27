@@ -1,5 +1,4 @@
 using Microsoft.Net.Http.Headers;
-using System.Net;
 using System.Text.Json.Serialization;
 
 namespace Unity_WebGL_Server
@@ -21,8 +20,11 @@ namespace Unity_WebGL_Server
             app.Use(async (context, next) =>
             {
                 var requestPath = context.Request.Path.Value;
+                Console.WriteLine("requestPath: " + requestPath);
                 if (string.IsNullOrEmpty(requestPath) || requestPath == "/")
-                    requestPath = "/index.html";
+                {
+                    requestPath = "APP/index.html";
+                }
 
                 // 安全路径处理
                 var fullPath = Path.GetFullPath(Path.Combine(webRoot, requestPath.TrimStart('/')));
