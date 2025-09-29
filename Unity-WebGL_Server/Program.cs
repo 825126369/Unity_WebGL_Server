@@ -1,5 +1,4 @@
 using Microsoft.Net.Http.Headers;
-using System.Reflection.Emit;
 
 namespace Unity_WebGL_Server
 {
@@ -8,6 +7,7 @@ namespace Unity_WebGL_Server
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateSlimBuilder(args);
+            builder.WebHost.UseUrls("http://localhost:5059", "http://localhost:5000");
             var app = builder.Build();
 
             string defaultRequestDir = "APP/";
